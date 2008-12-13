@@ -15,6 +15,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
 import android.graphics.drawable.Drawable;
+import android.graphics.Matrix;
 import android.media.MediaPlayer;
 
 public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback {
@@ -77,6 +78,7 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 		private int mTurnDirection;
 		private MediaPlayer mMusicPlayer;
 		private MediaPlayer mEffectPlayer;
+		private final int mTailDensity = 10;
 
 		protected class TailSegment {
 			public PointF pos = new PointF();
@@ -87,7 +89,6 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 			mContext = context;
 			
 			Resources res = context.getResources();
-			mBackgroundImage = BitmapFactory.decodeResource(res, R.drawable.background);
 			mHeadImage = res.getDrawable(R.drawable.head); 
 			mBodyImage = res.getDrawable(R.drawable.body); 
 			mAppleImage = res.getDrawable(R.drawable.apple); 
@@ -130,6 +131,10 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 				case KeyEvent.KEYCODE_DPAD_RIGHT:
 					mTurnDirection = 1;
 					return true;
+				case KeyEvent.KEYCODE_DPAD_UP:
+				case KeyEvent.KEYCODE_DPAD_DOWN:
+					mTurnDirection = 0;
+					return true;
 				}
 			}
 			return false;
@@ -144,6 +149,7 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 					}
 				} else {
 					switch (keyCode) {
+/*					
 					case KeyEvent.KEYCODE_DPAD_LEFT:
 						if (mTurnDirection == -1) {
 							mTurnDirection = 0;
@@ -154,6 +160,7 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 							mTurnDirection = 0;
 						}
 						return true;
+*/						
 					}
 				}
 			} else {
@@ -193,7 +200,7 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 				placeApple();
 			}
 			
-			for (int i = 0; i < mTail.size(); i += 5) {
+			for (int i = 0; i < mTail.size(); i += mTailDensity) {
 				int w = mBodyImage.getIntrinsicWidth() / 2;
 				int h = mBodyImage.getIntrinsicWidth() / 2;
 				if (i < mTail.size() - 30 &&
@@ -243,18 +250,31 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 		
 		public void setSurfaceSize(int width, int height) {
 			synchronized (mSurfaceHolder) {
+				Resources res = mContext.getResources();
+				mBackgroundImage = BitmapFactory.decodeResource(res, R.drawable.background);
+				if (height < width) {
+					Matrix m = new Matrix();
+					m.setRotate(90);
+					m.setScale((float)width / mBackgroundImage.getHeight(), (float)(height) / mBackgroundImage.getWidth());
+					m.setTranslate(width / 2, height / 2);
+					mBackgroundImage = Bitmap.createBitmap(mBackgroundImage, 0, 0, width, height, m, true);
+				}
 				mBackgroundImage = Bitmap.createScaledBitmap(mBackgroundImage, width, height, true);
 			}
 		}
 		
 		protected void render(Canvas canvas) {
+			if (mBackgroundImage == null) {
+				return;
+			}
+			
 			int cx = mBackgroundImage.getWidth() / 2;
 			int cy = mBackgroundImage.getHeight() / 2;
 			Paint paint = new Paint();
 			paint.setTextAlign(Align.CENTER);
 			paint.setColor(0xffffffff);
 			paint.setTextSize(paint.getTextSize() * 1.5f);
-
+			paint.setFlags(1);
 			canvas.drawBitmap(mBackgroundImage, 0, 0, null);
 			
 			if (!mGameRunning) {
@@ -274,7 +294,7 @@ public class MatopeliView extends SurfaceView implements SurfaceHolder.Callback 
 			canvas.restore();
 			
 			// draw body
-			for (int i = 0; i < mTail.size(); i += 5) {
+			for (int i = 0; i < mTail.size(); i += mTailDensity) {
 				canvas.save();
 				canvas.translate(mTail.get(i).pos.x, mTail.get(i).pos.y);
 				canvas.scale(mScale, mScale);
